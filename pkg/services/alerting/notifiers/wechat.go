@@ -7,6 +7,7 @@ import (
 	"github.com/grafana/grafana/pkg/infra/log"
 	"github.com/grafana/grafana/pkg/models"
 	"github.com/grafana/grafana/pkg/services/alerting"
+	"strings"
 )
 
 const defaultWeChatMsgType = "link"
@@ -41,6 +42,13 @@ func init() {
 					},
 				},
 			},
+			{
+				Label:        "Mention Users",
+				Element:      alerting.ElementTypeInput,
+				InputType:    alerting.InputTypeText,
+				Placeholder:  "@all",
+				PropertyName: "mentionUsers",
+			},
 		},
 	})
 }
@@ -52,10 +60,12 @@ func newWeChatNotifier(model *models.AlertNotification) (alerting.Notifier, erro
 	}
 
 	msgType := model.Settings.Get("msgType").MustString(defaultWeChatMsgType)
+	mentionUsers := model.Settings.Get("mentionUsers").MustString()
 
 	return &WeChatNotifier{
 		NotifierBase: NewNotifierBase(model),
 		MsgType:      msgType,
+		MentionUsers: mentionUsers,
 		URL:          url,
 		log:          log.New("alerting.notifier.wechat"),
 	}, nil
@@ -64,9 +74,10 @@ func newWeChatNotifier(model *models.AlertNotification) (alerting.Notifier, erro
 // WeChatNotifier is responsible for sending alert notifications to ding ding.
 type WeChatNotifier struct {
 	NotifierBase
-	MsgType string
-	URL     string
-	log     log.Logger
+	MsgType      string
+	URL          string
+	MentionUsers string
+	log          log.Logger
 }
 
 // Notify sends the alert notification to wechat.
@@ -112,17 +123,20 @@ func (wc *WeChatNotifier) genBody(evalContext *alerting.EvalContext, messageURL 
 	if wc.MsgType == "markdown" {
 		bodyMsg = map[string]interface{}{
 			"msgtype": "markdown",
-			"markdown": map[string]string{
-				"content": message,
+			"markdown": map[string]interface{}{
+				"content":        message,
+				"mentioned_list": strings.Split(wc.MentionUsers, ","),
 			},
 		}
 	} else {
 		bodyMsg = map[string]interface{}{
 			"msgtype": "text",
-			"text": map[string]string{
-				"content": message,
+			"text": map[string]interface{}{
+				"content":        message,
+				"mentioned_list": strings.Split(wc.MentionUsers, ","),
 			},
 		}
 	}
+
 	return json.Marshal(bodyMsg)
 }
