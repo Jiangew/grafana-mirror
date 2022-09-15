@@ -71,7 +71,7 @@ describe('FolderPicker', () => {
 
     expect(onChangeFn).toHaveBeenCalledWith({ title: newFolder.title, id: newFolder.id });
     const folderInput = await screen.findByTestId(selectors.components.FolderPicker.containerV2);
-    expect(within(folderInput).getByRole('combobox')).toHaveValue(newFolder.title);
+    expect(within(folderInput).getAllByText(newFolder.title).length).toBeGreaterThan(0);
   });
 });
 
